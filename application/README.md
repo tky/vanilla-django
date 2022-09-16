@@ -46,3 +46,15 @@ Run on the gunicorn and access a page via nginx
 $ docker-compose -f docker-compose.prod.yml up
 
 http://localhost:1337/
+
+
+## Upload a Docker Image to ECR
+
+```
+$ export PROFILE={YOUR AWS PROFILE}
+$ export REGION={YOUOR REGION}
+```
+
+```
+$ ./scripts/upload.sh
+```
