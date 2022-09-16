@@ -11,4 +11,5 @@ then
     echo "PostgreSQL started"
 fi
 
+exec gunicorn hello_django.wsgi:application --bind 0.0.0.0:8000
 exec "$@"
