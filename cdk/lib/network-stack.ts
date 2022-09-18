@@ -1,5 +1,6 @@
 import { Stack, StackProps } from 'aws-cdk-lib';
 import * as ec2 from "aws-cdk-lib/aws-ec2";
+import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { Construct } from 'constructs';
 
 interface NetworkProps extends StackProps {
@@ -12,6 +13,8 @@ export class NetworkStack extends Stack {
   public readonly sgDb: ec2.SecurityGroup;
   public readonly sgContainer: ec2.SecurityGroup;
   public readonly sgContainerLB: ec2.SecurityGroup;
+  public readonly sgPublicLB: ec2.SecurityGroupProps;
+  public readonly publicLB: elbv2.ApplicationLoadBalancer
 
   constructor(scope: Construct, id: string, props: NetworkProps) {
     super(scope, id, props);
@@ -30,6 +33,24 @@ export class NetworkStack extends Stack {
       ],
     });
     this.vpc = vpc;
+
+
+    const publicLoadBalancerSg = new ec2.SecurityGroup(this, 'sg-public-lb', {
+      vpc,
+      description: "Security Group of a Public Load Balancer",
+      securityGroupName: "django-public-lb-sg",
+      allowAllOutbound: true
+    });
+    publicLoadBalancerSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80))
+    publicLoadBalancerSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443))
+
+    this.publicLB = new elbv2.ApplicationLoadBalancer(this, 'django-public-lb', {
+      loadBalancerName: 'django-public-lb',
+      vpc,
+      securityGroup: publicLoadBalancerSg,
+      internetFacing: true,
+      vpcSubnets: { subnets: vpc.publicSubnets }
+    });
 
     this.sgDb = new ec2.SecurityGroup(this, 'sgDb', {
       vpc,
@@ -52,14 +73,19 @@ export class NetworkStack extends Stack {
       allowAllOutbound: true
     });
 
-    // the application container -> DB
+    // application containers -> DB
     this.sgDb.connections.allowFrom(new ec2.Connections({
       securityGroups: [this.sgContainer]
     }), ec2.Port.tcp(5432), "allow from application container");
 
-    // the load banacer -> applications
+    // the ecs internal load banacer -> application containers
     this.sgContainer.connections.allowFrom(new ec2.Connections({
       securityGroups: [this.sgContainerLB]
     }), ec2.Port.tcp(8000), "allow from the internal load balancer");
+
+    // the public load balancer -> the ecs internal load balancer
+    publicLoadBalancerSg.connections.allowFrom(new ec2.Connections({
+      securityGroups: [this.sgContainerLB]
+    }), ec2.Port.tcp(80), "allow from the public load balancer");
   }
 }

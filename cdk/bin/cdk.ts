@@ -35,10 +35,12 @@ new ApplicationStack(app, 'DjangoApplicationStack', {
   env,
   clusterName: "vanilla-django",
   vpc: network.vpc,
-  loadBalancerSecurityGroup: network.sgDb,
   containerSubnets: network.vpc.privateSubnets,
   containerSecurityGroup: network.sgContainer,
+  containerLBSecurityGroup: network.sgContainerLB,
+  publicLoadBalancer: network.publicLB,
   desiredCount: 1,
   repository: "vanilla-django",
+  nginxRepository: "vanilla-django-nginx",
   healthCheckPath: "/health_check"
 });
