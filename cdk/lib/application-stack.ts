@@ -74,6 +74,9 @@ export class ApplicationStack extends Stack {
       nginxRepository: props.nginxRepository,
       task: {
         family: `${props.clusterName}-task`,
+      },
+      environment: {
+        SECRET_KEY: "vanilla" // YOU SHOULD GET THE SECRET_KEY FROM Secret Manager!!!
       }
     });
 
@@ -103,9 +106,9 @@ export class ApplicationStack extends Stack {
 const buildTaskDefinition = (scope: Construct, name: string, props: TaskDefinitionProps): ecs.FargateTaskDefinition => {
   const taskDefinition = new ecs.FargateTaskDefinition(scope, "djangoTaskDefinition", props.task);
 
+  // TODO: Get a log group name form props.
   const logGroup = LogGroup.fromLogGroupName(scope, 'log-group', '/dev');
 
-  /*
   taskDefinition.addContainer(`${name}-django-container`, {
     containerName: name,
     image: ecs.ContainerImage.fromEcrRepository(
@@ -114,7 +117,6 @@ const buildTaskDefinition = (scope: Construct, name: string, props: TaskDefiniti
       environment: props.environment,
       logging: new ecs.AwsLogDriver({ streamPrefix: `${name}-applicaiton`, logGroup }),
   });
-  */
 
   const nginx = taskDefinition.addContainer(`${name}-nginx-container`, {
     containerName: `${name}-nginx`,
@@ -129,13 +131,6 @@ const buildTaskDefinition = (scope: Construct, name: string, props: TaskDefiniti
       essential: true,
       logging: new ecs.AwsLogDriver({ streamPrefix: `${name}-nginx`, logGroup }),
   });
-
-  /*
-    nginx.addVolumesFrom({
-      sourceContainer: name,
-      readOnly: false
-    });
-    */
 
   taskDefinition.defaultContainer = nginx;
 
