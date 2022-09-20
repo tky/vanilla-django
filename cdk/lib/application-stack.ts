@@ -126,6 +126,11 @@ export class ApplicationStack extends Stack {
          containerPort: 80,
         }),
       ]
+     }).configureHealthCheck( {
+       path: props.healthCheckPath,
+       interval: cdk.Duration.seconds(30),
+       unhealthyThresholdCount: 10,
+       port: "80"
      });
   }
 }
