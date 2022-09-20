@@ -20,7 +20,7 @@ const network = new NetworkStack(app, 'DjangoNetowrkStack', {
   cidrMask: 24
 });
 
-new RdsStack(app, 'DjangoRdsStack', {
+const rds = new RdsStack(app, 'DjangoRdsStack', {
   env,
   vpc: network.vpc,
   multiAz: false,
@@ -42,5 +42,7 @@ new ApplicationStack(app, 'DjangoApplicationStack', {
   desiredCount: 1,
   repository: "vanilla-django",
   nginxRepository: "vanilla-django-nginx",
-  healthCheckPath: "/health_check"
+  healthCheckPath: "/health_check",
+  credentials: rds.credentials,
+  dbHost: rds.instance.dbInstanceEndpointAddress
 });

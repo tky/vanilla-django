@@ -11,29 +11,31 @@ interface RdsProps extends StackProps {
 }
 
 export class RdsStack extends Stack {
-  public readonly credentails: rds.Credentials;
+  public readonly credentials: rds.Credentials;
+  public readonly instance: rds.DatabaseInstance;
 
   constructor(scope: Construct, id: string, props: RdsProps) {
     super(scope, id, props);
 
-    this.credentails = rds.Credentials.fromGeneratedSecret('root');
+    this.credentials = 
+      rds.Credentials.fromGeneratedSecret('root', { secretName: "vanilla-django-db-secret" });
 
-    new rds.DatabaseInstance(this, 'DB', {
+    this.instance = new rds.DatabaseInstance(this, 'DB', {
       vpc: props.vpc,
       vpcSubnets: {
-        subnetType: ec2.SubnetType.ISOLATED,
+        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
       },
       securityGroups: [props.securityGroup],
       engine: rds.DatabaseInstanceEngine.postgres({
         version: rds.PostgresEngineVersion.VER_13_3
       }),
       instanceType: props.instanceType,
-      credentials: this.credentails,
+      credentials: this.credentials,
       multiAz: props.multiAz,
       allowMajorVersionUpgrade: false,
       autoMinorVersionUpgrade: true,
       deleteAutomatedBackups: true,
-      deletionProtection: true,
+      deletionProtection: false,
       databaseName: 'karte',
       publiclyAccessible: false,
     });

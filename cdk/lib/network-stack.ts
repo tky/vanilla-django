@@ -28,8 +28,8 @@ export class NetworkStack extends Stack {
       enableDnsSupport: true,
       subnetConfiguration: [
         { cidrMask, name: 'public-subnet', subnetType: ec2.SubnetType.PUBLIC, },
-        { cidrMask, name: 'private-subnet', subnetType: ec2.SubnetType.PRIVATE }, 
-        { cidrMask, name: 'isolated-subnet', subnetType: ec2.SubnetType.ISOLATED }, 
+        { cidrMask, name: 'private-subnet', subnetType: ec2.SubnetType.PRIVATE_WITH_NAT },
+        { cidrMask, name: 'isolated-subnet', subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       ],
     });
     this.vpc = vpc;

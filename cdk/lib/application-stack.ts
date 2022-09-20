@@ -2,6 +2,7 @@ import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { FargatePlatformVersion } from 'aws-cdk-lib/aws-ecs'
 import { LogGroup } from "aws-cdk-lib/aws-logs";
+import * as secrets from 'aws-cdk-lib/aws-secretsmanager'
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as cdk from "aws-cdk-lib"
 import * as ec2 from "aws-cdk-lib/aws-ec2";
@@ -9,6 +10,7 @@ import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as ecs_patterns from "aws-cdk-lib/aws-ecs-patterns"
 import * as ecs from "aws-cdk-lib/aws-ecs"
 import * as ecr from "aws-cdk-lib/aws-ecr"
+import * as rds from "aws-cdk-lib/aws-rds";
 import { EnableExecuteCommand } from './command'; 
 
 interface ApplicationProps extends StackProps {
@@ -22,6 +24,8 @@ interface ApplicationProps extends StackProps {
   readonly repository: string
   readonly nginxRepository: string
   readonly healthCheckPath: string
+  readonly credentials: rds.Credentials
+  readonly dbHost: string
 }
 
 interface ApplicationLoadBalancedFargateServiceProps {
@@ -50,7 +54,6 @@ interface TaskDefinitionProps {
   }
 }
 
-
 export class ApplicationStack extends Stack {
   constructor(scope: Construct, id: string, props: ApplicationProps) {
     super(scope, id, props);
@@ -68,6 +71,20 @@ export class ApplicationStack extends Stack {
       vpcSubnets: { subnets: props.containerSubnets }
     });
 
+    const dbSecret = secrets.Secret.fromSecretCompleteArn(
+       this,
+       "secret",
+       "arn:aws:secretsmanager:ap-northeast-2:831823869380:secret:vanilla-django-db-secret-Mn44Cb"
+     );
+
+    /*
+    const dbSecret = secrets.Secret.fromSecretNameV2(
+       this,
+       "secret",
+       "vanilla-django-db-secret"
+     );
+     */
+
 
     const taskDefinition = buildTaskDefinition(this, props.clusterName,{
       repository: props.repository,
@@ -75,8 +92,18 @@ export class ApplicationStack extends Stack {
       task: {
         family: `${props.clusterName}-task`,
       },
+      // YOU SHOULD GET THE CREDENTIAL FROM Secret Manager!!!
       environment: {
-        SECRET_KEY: "vanilla" // YOU SHOULD GET THE SECRET_KEY FROM Secret Manager!!!
+        SECRET_KEY: "vanilla",
+        SQL_ENGINE: "django.db.backends.postgresql",
+        SQL_DATABASE: "hello_django_dev",
+        SQL_USER: props.credentials.username,
+        SQL_HOST: props.dbHost,
+        SQL_PORT: "5432",
+        DATABASE: "postgres"
+      },
+      secrets: {
+        SQL_PASSWORD: ecs.Secret.fromSecretsManager(dbSecret, 'password')
       }
     });
 
@@ -153,14 +180,12 @@ export const buildApplicationLoadBalancedFargateService = (scope: Construct, nam
     platformVersion: FargatePlatformVersion.VERSION1_4
   });
 
-  /*
   service.targetGroup.configureHealthCheck({
     path: props.healthCheckPath,
     interval: cdk.Duration.seconds(30),
     unhealthyThresholdCount: 10,
-    port: "8000",
+    port: "80",
   });
-  */
 
   service.taskDefinition.taskRole.addToPrincipalPolicy(
     new iam.PolicyStatement({
@@ -173,6 +198,7 @@ export const buildApplicationLoadBalancedFargateService = (scope: Construct, nam
       resources: ['*'],
     }),
   );
+
   cdk.Aspects.of(service).add(new EnableExecuteCommand());
 
   return service;
