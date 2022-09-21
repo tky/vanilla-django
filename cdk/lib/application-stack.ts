@@ -71,19 +71,12 @@ export class ApplicationStack extends Stack {
       vpcSubnets: { subnets: props.containerSubnets }
     });
 
-    const dbSecret = secrets.Secret.fromSecretCompleteArn(
-       this,
-       "secret",
-       "arn:aws:secretsmanager:ap-northeast-2:831823869380:secret:vanilla-django-db-secret-Mn44Cb"
-     );
-
-    /*
+    // ???????
     const dbSecret = secrets.Secret.fromSecretNameV2(
        this,
        "secret",
        "vanilla-django-db-secret"
      );
-     */
 
 
     const taskDefinition = buildTaskDefinition(this, props.clusterName,{
