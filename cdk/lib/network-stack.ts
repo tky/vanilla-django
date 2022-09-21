@@ -9,12 +9,13 @@ interface NetworkProps extends StackProps {
 }
 
 export class NetworkStack extends Stack {
-  public readonly vpc: ec2.IVpc;
-  public readonly sgDb: ec2.SecurityGroup;
-  public readonly sgContainer: ec2.SecurityGroup;
-  public readonly sgContainerLB: ec2.SecurityGroup;
-  public readonly sgPublicLB: ec2.SecurityGroupProps;
+  public readonly vpc: ec2.IVpc
+  public readonly sgDb: ec2.SecurityGroup
+  public readonly sgContainer: ec2.SecurityGroup
+  public readonly sgContainerLB: ec2.SecurityGroup
+  public readonly sgPublicLB: ec2.SecurityGroupProps
   public readonly publicLB: elbv2.ApplicationLoadBalancer
+  public readonly sgAdmin: ec2.SecurityGroup
 
   constructor(scope: Construct, id: string, props: NetworkProps) {
     super(scope, id, props);
@@ -73,6 +74,13 @@ export class NetworkStack extends Stack {
       allowAllOutbound: true
     });
 
+    this.sgAdmin = new ec2.SecurityGroup(this, 'sg-admin', {
+      vpc,
+      description: "Security Group of a admin instance",
+      securityGroupName: "django-admin-sg",
+      allowAllOutbound: true
+    });
+
     // application containers -> DB
     this.sgDb.connections.allowFrom(new ec2.Connections({
       securityGroups: [this.sgContainer]
@@ -87,5 +95,10 @@ export class NetworkStack extends Stack {
     publicLoadBalancerSg.connections.allowFrom(new ec2.Connections({
       securityGroups: [this.sgContainerLB]
     }), ec2.Port.tcp(80), "allow from the public load balancer");
+
+    // the admin instance -> DB
+    this.sgDb.connections.allowFrom(new ec2.Connections({
+      securityGroups: [this.sgAdmin]
+    }), ec2.Port.tcp(5432), "allow from an admin instance");
   }
 }
